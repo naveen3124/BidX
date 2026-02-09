@@ -1,4 +1,4 @@
-package org.rss.service;
+package com.bengaluru.rss;
 
 //Java NIO for file paths
 import java.nio.file.Path;

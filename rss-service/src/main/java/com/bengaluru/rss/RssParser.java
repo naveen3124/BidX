@@ -1,4 +1,4 @@
-package org.rss.service;
+package com.bengaluru.rss;
 
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;

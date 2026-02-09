@@ -1,4 +1,4 @@
-package org.rss.service;
+package com.bengaluru.rss;
 
 import java.net.URI;
 
