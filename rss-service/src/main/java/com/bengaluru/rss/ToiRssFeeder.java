@@ -1,6 +1,5 @@
 package com.bengaluru.rss;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 
@@ -11,13 +10,10 @@ public final class ToiRssFeeder implements RssFeeder {
 
     private final RssFetcher fetcher;
     private final RssParser parser;
-    private final LuceneIndexer indexer;
 
-    public ToiRssFeeder(RssFetcher fetcher, RssParser parser,
-            LuceneIndexer indexer) {
+    public ToiRssFeeder(RssFetcher fetcher, RssParser parser) {
         this.fetcher = fetcher;
         this.parser = parser;
-        this.indexer = indexer;
     }
 
     @Override
@@ -31,13 +27,10 @@ public final class ToiRssFeeder implements RssFeeder {
     }
 
     @Override
-    public void fetchAndIndex() throws Exception {
-        try (InputStream in = fetcher.fetch(feedUri())) {
-            List<FeedEntry> entries = parser.parse(name(), in);
-            for (FeedEntry e : entries) {
-                indexer.index(e);
-            }
-            indexer.commit();
-        }
+    public List<FeedEntry> fetchEntries() throws Exception {
+
+        byte[] xml = fetcher.fetch(feedUri());
+
+        return parser.parse(name(), xml);
     }
 }
