@@ -3,7 +3,12 @@ package com.bengaluru.rss;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RssEngine {
@@ -41,8 +46,8 @@ public class RssEngine {
      */
     public void start(List<String> feedUrls) throws Exception {
 
-        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-
+        try (var scope = StructuredTaskScope.open(
+                StructuredTaskScope.Joiner.<Void>awaitAllSuccessfulOrThrow())) {
             // One feed worker per feed URL
             for (String url : feedUrls) {
                 scope.fork(() -> feedWorker(url));
@@ -54,7 +59,6 @@ public class RssEngine {
             }
 
             scope.join();
-            scope.throwIfFailed();
         }
     }
 
