@@ -1,4 +1,4 @@
-﻿package com.bengaluru.rss;
+package com.bengaluru.rss;
 
 import java.net.URI;
 import java.time.Duration;
