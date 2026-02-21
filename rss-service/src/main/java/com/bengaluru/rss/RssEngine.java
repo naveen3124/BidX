@@ -1,13 +1,15 @@
-package com.bengaluru.rss;
+﻿package com.bengaluru.rss;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -42,23 +44,43 @@ public class RssEngine {
     }
 
     /**
-     * Starts engine using structured concurrency.
+     * Starts engine using virtual threads without preview APIs.
      */
     public void start(List<String> feedUrls) throws Exception {
 
-        try (var scope = StructuredTaskScope.open(
-                StructuredTaskScope.Joiner.<Void>awaitAllSuccessfulOrThrow())) {
+        List<Future<Void>> tasks = new ArrayList<>();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
             // One feed worker per feed URL
             for (String url : feedUrls) {
-                scope.fork(() -> feedWorker(url));
+                tasks.add(executor.submit(() -> feedWorker(url)));
             }
 
             // Parallel indexing workers
             for (int i = 0; i < INDEX_WORKERS; i++) {
-                scope.fork(this::indexLoop);
+                tasks.add(executor.submit(this::indexLoop));
             }
 
-            scope.join();
+            // Fail fast if any worker crashes.
+            for (Future<Void> task : tasks) {
+                try {
+                    task.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    stop();
+                    throw e;
+                } catch (ExecutionException e) {
+                    stop();
+                    healthy.set(false);
+                    executor.shutdownNow();
+                    Throwable cause = e.getCause();
+                    if (cause instanceof Exception ex) {
+                        throw ex;
+                    }
+                    throw new RuntimeException(cause);
+                }
+            }
         }
     }
 
