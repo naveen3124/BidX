@@ -26,10 +26,11 @@ public class Main {
         RssParser parser = new RssParser();
         LuceneIndexer indexer = new LuceneIndexer(Path.of(indexPath));
 
-        RssEngine engine = new RssEngine(fetcher, parser, indexer, healthy);
+        RssEngine engine = new RssEngine(indexer, healthy);
 
-        List<String> feeds = List.of(
-                "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms");
+        List<RssFeeder> feeds = List.of(
+                new ToiRssFeeder(fetcher, parser),
+            new ToiRssFeeder(fetcher, parser));
 
         Thread engineThread =
                 Thread.ofPlatform().name("rss-engine").start(() -> {

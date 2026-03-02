@@ -1,6 +1,5 @@
 package com.bengaluru.rss;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,15 +29,10 @@ public class RssEngine {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean healthy;
 
-    private final RssFetcher fetcher;
-    private final RssParser parser;
     private final LuceneIndexer indexer;
 
-    public RssEngine(RssFetcher fetcher, RssParser parser,
-            LuceneIndexer indexer, AtomicBoolean healthy) {
+    public RssEngine(LuceneIndexer indexer, AtomicBoolean healthy) {
 
-        this.fetcher = fetcher;
-        this.parser = parser;
         this.indexer = indexer;
         this.healthy = healthy;
     }
@@ -46,15 +40,15 @@ public class RssEngine {
     /**
      * Starts engine using virtual threads without preview APIs.
      */
-    public void start(List<String> feedUrls) throws Exception {
+    public void start(List<RssFeeder> feeders) throws Exception {
 
         List<Future<Void>> tasks = new ArrayList<>();
 
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
             // One feed worker per feed URL
-            for (String url : feedUrls) {
-                tasks.add(executor.submit(() -> feedWorker(url)));
+            for (RssFeeder feeder : feeders) {
+                tasks.add(executor.submit(() -> feedWorker(feeder)));
             }
 
             // Parallel indexing workers
@@ -87,7 +81,7 @@ public class RssEngine {
     /**
      * Each feed has a long-running worker.
      */
-    private Void feedWorker(String url) {
+    private Void feedWorker(RssFeeder feeder) {
 
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
@@ -100,8 +94,8 @@ public class RssEngine {
 
                 executor.submit(() -> {
                     try {
-                        byte[] xml = fetcher.fetch(URI.create(url));
-                        List<FeedEntry> entries = parser.parse(url, xml);
+                        
+                        List<FeedEntry> entries = feeder.fetchEntries();
 
                         for (FeedEntry entry : entries) {
                             queue.put(entry); // backpressure
